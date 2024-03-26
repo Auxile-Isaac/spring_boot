@@ -1,20 +1,13 @@
-# syntax=docker/dockerfile:1
-
-FROM eclipse-temurin:17-jdk-jammy
-
-WORKDIR /APP
-COPY .mvn/ .mvn
-COPY mvnw pom.xml ./
-
-RUN chmod +x ./mvnw
-
-
-# Converting the mvn line endings during build (if you don't change line endings of the mvnw file)
-RUN apt-get update && apt-get install -y dos2unix
-RUN dos2unix ./mvnw
-
-RUN  ./mvnw dependency:resolve
-
+# Stage 1: Build the application
+FROM maven:3.8.4-openjdk-17 AS build
+WORKDIR /app
+COPY pom.xml .
 COPY src ./src
+RUN mvn clean install
 
-CMD ["./mvn", "spring-boot:run"]
+# Stage 2: Run the application
+FROM openjdk:17-alpine
+WORKDIR /app
+COPY --from=build /app/target/aws-0.0.1-SNAPSHOT.jar ./demo-aws.jar
+EXPOSE 8080
+CMD ["java", "-jar", "demo-aws.jar"]
